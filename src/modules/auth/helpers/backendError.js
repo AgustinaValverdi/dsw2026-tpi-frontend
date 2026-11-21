@@ -13,6 +13,9 @@ const frontendErrorMessage = {
   APPOINTMENT_INVALID_DNI: 'El DNI no es válido.',
   APPOINTMENT_NOT_CANCELLABLE: 'Este turno ya no se puede cancelar.',
   PATIENT_LOGIN_INVALID: 'Revisá el email y los datos ingresados.',
+  DOCTOR_LICENSE_CONFLICT: 'Ya existe un médico con esa matrícula.',
+  SPECIALITY_HAS_DOCTORS:
+    'No se puede eliminar: la especialidad tiene médicos activos. Eliminá o cambiá de especialidad a esos médicos primero.',
   RATE_LIMIT_EXCEEDED:
     'Demasiados intentos. Esperá unos segundos y volvé a probar.',
   UNHANDLED_ERROR: 'Ocurrió un error inesperado. Intentá nuevamente.',

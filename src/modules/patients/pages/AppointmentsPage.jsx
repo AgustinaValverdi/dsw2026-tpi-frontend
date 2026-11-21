@@ -1,82 +1,43 @@
-import { useCallback, useEffect, useState } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import Card from '../../shared/components/Card';
 import Button from '../../shared/components/Button';
-import useAuth from '../../auth/hook/useAuth';
-import { getErrorMessage } from '../../auth/helpers/backendError';
+import ConfirmDialog from '../../shared/components/ConfirmDialog';
+import ErrorBanner from '../../shared/components/ErrorBanner';
+import useDeleteAction from '../../shared/hooks/useDeleteAction';
+import useAuth from '../../auth/hooks/useAuth';
 import { formatLongDate, isPast } from '../../shared/helpers/dates';
-import {
-  cancelAppointment,
-  getPatientAppointments,
-} from '../services/bookingService';
+import { cancelAppointment } from '../services/bookingService';
+import usePatientAppointments from '../hooks/usePatientAppointments';
+import AppointmentCard from '../components/AppointmentCard';
 
-const STATUS_STYLE = {
-  BOOKED: {
-    label: 'Confirmado',
-    className: 'bg-med-active-bg text-med-active-text',
-  },
-  CANCELLED: {
-    label: 'Cancelado',
-    className: 'bg-med-danger-bg text-med-danger-text',
-  },
-  ATTENDED: { label: 'Atendido', className: 'bg-slate-100 text-slate-700' },
-  NO_SHOW: {
-    label: 'Ausente',
-    className: 'bg-med-leave-bg text-med-leave-text',
-  },
-};
+const cancelById = (appointment) => cancelAppointment(appointment.id);
 
 function AppointmentsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [toCancel, setToCancel] = useState(null);
-  const [cancelling, setCancelling] = useState(false);
 
-  const loadAppointments = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage('');
+  const { appointments, loading, error, reload } = usePatientAppointments(
+    user?.dni
+  );
 
-    try {
-      const list = await getPatientAppointments(user?.dni);
+  const cancellation = useDeleteAction(cancelById, {
+    onDone: reload,
+    failMessage: 'No se pudo cancelar el turno.',
+  });
 
-      setAppointments(
-        list
-          .filter((appt) => appt.status === 'BOOKED')
-          .sort((a, b) =>
-            `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`)
-          )
-      );
-    } catch (error) {
-      setErrorMessage(
-        getErrorMessage(error, 'No se pudieron cargar tus turnos.')
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.dni]);
+  // Turnos confirmados que todavía no pasaron
+  const upcoming = appointments.filter(
+    (appt) => appt.status === 'BOOKED' && !isPast(appt.date, appt.startTime)
+  );
 
-  useEffect(() => {
-    loadAppointments();
-  }, [loadAppointments]);
-
-  const handleCancel = async () => {
-    setCancelling(true);
-    setErrorMessage('');
-
-    try {
-      await cancelAppointment(toCancel.id);
-      setToCancel(null);
-      await loadAppointments();
-    } catch (error) {
-      setToCancel(null);
-      setErrorMessage(getErrorMessage(error, 'No se pudo cancelar el turno.'));
-    } finally {
-      setCancelling(false);
-    }
-  };
+  // Cancelados, completados, ausentes y turnos anteriores
+  const history = appointments
+    .filter(
+      (appt) =>
+        appt.status !== 'BOOKED' || isPast(appt.date, appt.startTime)
+    )
+    .reverse();
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,20 +47,16 @@ function AppointmentsPage() {
             Mis Turnos Médicos
           </h1>
           <p className="text-sm text-med-text-sub mt-1">
-            Consultá y gestioná las citas médicas programadas.
+            Consultá tus próximos turnos y el historial de citas médicas.
           </p>
         </div>
-        <Button onClick={() => navigate('/')}>+ Solicitar Nuevo Turno</Button>
+
+        <Button onClick={() => navigate('/')}>
+          + Solicitar Nuevo Turno
+        </Button>
       </div>
 
-      {errorMessage && (
-        <div
-          role="alert"
-          className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600"
-        >
-          {errorMessage}
-        </div>
-      )}
+      <ErrorBanner>{error}</ErrorBanner>
 
       {loading && (
         <p className="py-10 text-center text-sm text-med-text-muted">
@@ -107,116 +64,80 @@ function AppointmentsPage() {
         </p>
       )}
 
-      {!loading && !errorMessage && appointments.length === 0 && (
+      {!loading && !error && appointments.length === 0 && (
         <Card className="p-10 text-center">
-          <p className="text-sm text-med-text-sub">No tenés turnos activos.</p>
+          <p className="text-sm text-med-text-sub">
+            Todavía no tenés turnos registrados.
+          </p>
           <Button className="mt-4" onClick={() => navigate('/')}>
             Reservar un turno
           </Button>
         </Card>
       )}
 
-      {!loading && appointments.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {appointments.map((appt) => {
-            const status = STATUS_STYLE[appt.status] ?? STATUS_STYLE.BOOKED;
-            const canCancel =
-              appt.status === 'BOOKED' && !isPast(appt.date, appt.startTime);
+      {!loading && !error && appointments.length > 0 && (
+        <>
+          {/* Próximos turnos */}
+          <section className="flex flex-col gap-4">
+            <h2 className="text-xl font-bold text-med-text-main">
+              Próximos turnos ({upcoming.length})
+            </h2>
 
-            return (
-              <Card
-                key={appt.id}
-                className="flex flex-col justify-between gap-4 p-6"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    {appt.specialtyName ? (
-                      <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-med-primary-100 text-med-primary-700">
-                        {appt.specialtyName}
-                      </span>
-                    ) : (
-                      <span />
-                    )}
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${status.className}`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                      {status.label}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-bold text-med-primary-900">
-                    {appt.doctorName}
-                  </h3>
-                  {appt.date && (
-                    <p className="text-sm text-med-text-sub mt-2">
-                      Fecha:{' '}
-                      <strong className="text-med-text-main font-semibold">
-                        {formatLongDate(appt.date)}
-                      </strong>{' '}
-                      a las{' '}
-                      <strong className="text-med-text-main font-semibold">
-                        {appt.startTime} hs
-                      </strong>
-                    </p>
-                  )}
-                  {appt.reason && (
-                    <p className="text-xs text-med-text-muted mt-1">
-                      Motivo: {appt.reason}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2 pt-3 border-t border-med-border">
-                  <Button
-                    variant="outline"
-                    className="w-full text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!canCancel}
-                    onClick={() => setToCancel(appt)}
-                  >
-                    Cancelar Turno
-                  </Button>
-                </div>
+            {upcoming.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {upcoming.map((appt) => (
+                  <AppointmentCard
+                    key={appt.id}
+                    appointment={appt}
+                    onCancel={cancellation.request}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="p-6 text-sm text-med-text-sub">
+                No tenés turnos próximos.
               </Card>
-            );
-          })}
-        </div>
+            )}
+          </section>
+
+          {/* Historial */}
+          {history.length > 0 && (
+            <section className="flex flex-col gap-4">
+              <h2 className="text-xl font-bold text-med-text-main">
+                Historial de turnos ({history.length})
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {history.map((appt) => (
+                  <AppointmentCard
+                    key={appt.id}
+                    appointment={appt}
+                    onCancel={cancellation.request}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
 
-      {toCancel && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+      {cancellation.target && (
+        <ConfirmDialog
+          title="¿Cancelar este turno?"
+          confirmLabel="Sí, cancelar"
+          busyLabel="Cancelando..."
+          busy={cancellation.busy}
+          error={cancellation.error}
+          onConfirm={cancellation.confirm}
+          onCancel={cancellation.cancel}
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
-            <h3 className="text-lg font-bold text-med-primary-900">
-              ¿Cancelar este turno?
-            </h3>
-            <p className="text-xs text-med-text-sub mt-2 leading-relaxed">
-              {toCancel.doctorName}
-              {toCancel.date &&
-                ` — ${formatLongDate(toCancel.date)} a las ${toCancel.startTime} hs`}
-              . El horario quedará disponible para otros pacientes.
-            </p>
-            <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <Button
-                variant="danger"
-                className="w-full text-xs py-2.5 disabled:opacity-60"
-                disabled={cancelling}
-                onClick={handleCancel}
-              >
-                {cancelling ? 'Cancelando...' : 'Sí, cancelar'}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full text-xs py-2.5"
-                disabled={cancelling}
-                onClick={() => setToCancel(null)}
-              >
-                Volver
-              </Button>
-            </div>
-          </div>
-        </div>
+          <p>
+            {cancellation.target.doctorName}
+            {cancellation.target.date &&
+              ` — ${formatLongDate(cancellation.target.date)} a las ${cancellation.target.startTime} hs`}
+            . El horario quedará disponible para otros pacientes.
+          </p>
+        </ConfirmDialog>
       )}
     </div>
   );

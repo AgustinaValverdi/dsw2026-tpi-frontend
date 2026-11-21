@@ -90,3 +90,12 @@ export const formatWeekRange = (from, to) => {
 
   return `${startDay.label} ${start.getDate()} - ${endDay.label} ${end.getDate()}, ${months}`;
 };
+
+const shortFormatter = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
+export const formatShortDate = (isoDate) =>
+  shortFormatter.format(parseISODate(isoDate)).replace('.', '');

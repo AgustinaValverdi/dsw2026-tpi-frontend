@@ -12,8 +12,8 @@ import { ROLES } from './modules/auth/helpers/roles';
 import AdminLoginPage from './modules/auth/pages/AdminLoginPage';
 
 // Patients Module
-import PatientLoginPage from './modules/patients/pages/PatientLoginPage';
-import PatientRegisterPage from './modules/patients/pages/PatientRegisterPage';
+import PatientLoginPage from './modules/auth/pages/PatientLoginPage';
+import PatientRegisterPage from './modules/auth/pages/PatientRegisterPage';
 import PatientLayout from './modules/patients/components/PatientLayout';
 import PatientHome from './modules/patients/pages/PatientHome';
 import AppointmentsPage from './modules/patients/pages/AppointmentsPage';
@@ -24,7 +24,9 @@ import OverviewPage from './modules/dashboard/pages/OverviewPage';
 
 // Domain Modules (Screaming Architecture)
 import DoctorsPage from './modules/doctors/pages/DoctorsPage';
+import DoctorCreatePage from './modules/doctors/pages/DoctorCreatePage';
 import SpecialtiesPage from './modules/specialties/pages/SpecialtiesPage';
+import SpecialtyCreatePage from './modules/specialties/pages/SpecialtyCreatePage';
 import AppointmentsSearchPage from './modules/appointments/pages/AppointmentsSearchPage';
 import AvailabilityPage from './modules/availability/pages/AvailabilityPage';
 
@@ -107,6 +109,14 @@ const routes = [
       {
         path: 'specialties',
         element: <SpecialtiesPage />,
+      },
+      {
+        path: 'specialties/new',
+        element: <SpecialtyCreatePage />,
+      },
+      {
+        path: 'doctors/new',
+        element: <DoctorCreatePage />,
       },
       {
         path: 'doctors',

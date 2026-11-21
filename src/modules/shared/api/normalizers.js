@@ -14,6 +14,15 @@ export const toList = (payload) => {
   return pick(payload, 'data', 'Data', 'items') ?? [];
 };
 
+export const toPage = (payload, normalize) => {
+  const items = toList(payload).map(normalize);
+
+  return {
+    items,
+    total: pick(payload, 'total', 'Total') ?? items.length,
+  };
+};
+
 export const normalizeSpecialty = (raw) => ({
   id: pick(raw, 'id', 'Id', 'specialtyId', 'specialityId'),
   name: pick(raw, 'name', 'Name') ?? '',
@@ -38,6 +47,7 @@ export const normalizeDoctor = (raw) => {
     id: pick(raw, 'id', 'Id'),
     name: pick(raw, 'name', 'Name') ?? '',
     licenseNumber: pick(raw, 'licenseNumber', 'LicenseNumber') ?? '',
+    deleted: pick(raw, 'deleted', 'Deleted') === true,
     specialty: specialty ? normalizeSpecialty(specialty) : flatSpecialty,
   };
 };
@@ -97,6 +107,8 @@ export const normalizeAppointment = (raw) => {
       pick(raw, 'specialtyName') ??
       '',
     reason: pick(raw, 'reason') ?? '',
+    patientName: pick(raw.patient ?? {}, 'fullName', 'name') ?? '',
+    patientDni: pick(raw.patient ?? {}, 'dni', 'Dni') ?? null,
     status: String(
       pick(
         raw,
