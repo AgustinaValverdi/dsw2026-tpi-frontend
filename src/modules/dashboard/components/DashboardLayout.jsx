@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import useAuth from '../../auth/hook/useAuth';
+import useAuth from '../../auth/hooks/useAuth';
 import { getInitials } from '../../shared/helpers/initials';
 
 function DashboardLayout() {

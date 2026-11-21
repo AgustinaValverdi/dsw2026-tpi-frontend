@@ -2,7 +2,7 @@ export const getInitials = (name = '') => {
   const parts = name
     .trim()
     .split(/\s+/)
-    .filter((part) => /^\p{L}/u.test(part));
+    .filter((part) => /^\p{L}/u.test(part) && !part.endsWith('.'));
 
   if (parts.length === 0) return '?';
 

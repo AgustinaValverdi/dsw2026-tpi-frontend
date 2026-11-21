@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import useAuth from '../hook/useAuth';
+import useAuth from '../hooks/useAuth';
 import { redirectAfterLogin } from '../helpers/roles';
 
 function GuestRoute({ children }) {

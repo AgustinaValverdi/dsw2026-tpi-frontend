@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import Button from '../../shared/components/Button';
 import AuthLayout from '../components/AuthLayout';
 import AuthField from '../components/AuthField';
-import useAuth from '../hook/useAuth';
+import useAuth from '../hooks/useAuth';
 import { emailRules, passwordRules } from '../helpers/validations';
 
 function AdminLoginPage() {
