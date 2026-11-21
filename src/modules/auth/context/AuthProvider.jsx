@@ -1,99 +1,96 @@
-import { createContext, useState } from 'react';
-import { login } from '../services/login';
+import { createContext, useCallback, useMemo, useState } from 'react';
 import { loginAdmin } from '../services/adminLogin';
 import { loginPatient } from '../services/patientLogin';
+import { registerPatient } from '../services/patientRegister';
+import { logout } from '../services/logout';
+import { clearSession, loadSession, saveSession } from '../helpers/session';
+import { ROLES } from '../helpers/roles';
+import { getErrorMessage } from '../helpers/backendError';
 
 const AuthContext = createContext();
 
 function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const token = localStorage.getItem('token');
+  const [user, setUser] = useState(() => loadSession());
 
-    return Boolean(token);
-  });
+  const startSession = useCallback((session) => {
+    saveSession(session);
+    setUser(session);
+  }, []);
 
-  const singout = () => {
-    localStorage.clear();
-    setIsAuthenticated(false);
-  };
+  const signOut = useCallback(() => {
+    logout(loadSession()?.token);
+    clearSession();
+    setUser(null);
+  }, []);
 
-  const setAuthSession = (token) => {
-    localStorage.setItem('token', token);
-    setIsAuthenticated(true);
-  };
+  const authenticate = useCallback(
+    async (action, expectedRole, defaultMessage) => {
+      try {
+        const session = await action();
 
-  const singin = async (username, password) => {
-    const { data, error } = await login(username, password);
+        if (session.role !== expectedRole) {
+          return {
+            error:
+              expectedRole === ROLES.ADMIN
+                ? 'Esta cuenta no tiene acceso administrativo.'
+                : 'Esta cuenta no es de paciente. Ingresá por el portal administrativo.',
+          };
+        }
 
-    if (error) {
-      return { error };
-    }
+        startSession(session);
 
-    setAuthSession(data);
-
-    return { error: null };
-  };
-
-  const singinAdmin = async (username, password) => {
-    if (
-      (username === 'admin' ||
-        username === 'admin@medportal.com' ||
-        username === 'admin@test.com') &&
-      password === 'admin123'
-    ) {
-      setAuthSession('mock-admin-token-12345');
-
-      return { error: null };
-    }
-
-    const { data, error } = await loginAdmin(username, password);
-
-    if (error) {
-      return { error };
-    }
-
-    setAuthSession(data);
-
-    return { error: null };
-  };
-
-  const singinPatient = async (username, password) => {
-    if (
-      (username === 'paciente' ||
-        username === 'paciente@medportal.com' ||
-        username === 'paciente@test.com') &&
-      password === 'paciente123'
-    ) {
-      setAuthSession('mock-patient-token-67890');
-
-      return { error: null };
-    }
-
-    const { data, error } = await loginPatient(username, password);
-
-    if (error) {
-      return { error };
-    }
-
-    setAuthSession(data);
-
-    return { error: null };
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        singin,
-        singinAdmin,
-        singinPatient,
-        singout,
-        setAuthSession,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+        return { error: null, session };
+      } catch (error) {
+        return { error: getErrorMessage(error, defaultMessage) };
+      }
+    },
+    [startSession]
   );
+
+  const signInAdmin = useCallback(
+    (credentials) =>
+      authenticate(
+        () => loginAdmin(credentials),
+        ROLES.ADMIN,
+        'Credenciales administrativas inválidas.'
+      ),
+    [authenticate]
+  );
+
+  const signInPatient = useCallback(
+    (credentials) =>
+      authenticate(
+        () => loginPatient(credentials),
+        ROLES.PATIENT,
+        'Credenciales inválidas.'
+      ),
+    [authenticate]
+  );
+
+  const signUpPatient = useCallback(
+    (data) =>
+      authenticate(
+        () => registerPatient(data),
+        ROLES.PATIENT,
+        'No se pudo completar el registro.'
+      ),
+    [authenticate]
+  );
+
+  const value = useMemo(
+    () => ({
+      user,
+      role: user?.role ?? null,
+      isAuthenticated: Boolean(user),
+      signInAdmin,
+      signInPatient,
+      signUpPatient,
+      signOut,
+    }),
+    [user, signInAdmin, signInPatient, signUpPatient, signOut]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export { AuthProvider, AuthContext };

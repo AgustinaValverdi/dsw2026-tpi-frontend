@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '../../shared/components/Card';
 import Button from '../../shared/components/Button';
 
 function DoctorsPage() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
   const doctorsList = [
@@ -88,7 +90,7 @@ function DoctorsPage() {
           </div>
 
           <Button
-            onClick={() => alert('Abrir modal de disponibilidad horaria')}
+            onClick={() => navigate('/admin/availability')}
             className="flex items-center gap-2 bg-med-primary-900 hover:bg-med-primary-800 text-white"
           >
             <svg

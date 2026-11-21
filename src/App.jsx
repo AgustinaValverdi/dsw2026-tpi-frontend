@@ -5,12 +5,15 @@ import {
 } from 'react-router-dom';
 import { AuthProvider } from './modules/auth/context/AuthProvider';
 import ProtectedRoute from './modules/auth/components/ProtectedRoute';
+import GuestRoute from './modules/auth/components/GuestRoute';
+import { ROLES } from './modules/auth/helpers/roles';
 
 // Auth Module
 import AdminLoginPage from './modules/auth/pages/AdminLoginPage';
 
 // Patients Module
 import PatientLoginPage from './modules/patients/pages/PatientLoginPage';
+import PatientRegisterPage from './modules/patients/pages/PatientRegisterPage';
 import PatientLayout from './modules/patients/components/PatientLayout';
 import PatientHome from './modules/patients/pages/PatientHome';
 import AppointmentsPage from './modules/patients/pages/AppointmentsPage';
@@ -23,23 +26,40 @@ import OverviewPage from './modules/dashboard/pages/OverviewPage';
 import DoctorsPage from './modules/doctors/pages/DoctorsPage';
 import SpecialtiesPage from './modules/specialties/pages/SpecialtiesPage';
 import AppointmentsSearchPage from './modules/appointments/pages/AppointmentsSearchPage';
+import AvailabilityPage from './modules/availability/pages/AvailabilityPage';
 
 const routes = [
   // Rutas públicas
   {
     path: '/login',
-    element: <PatientLoginPage />,
+    element: (
+      <GuestRoute>
+        <PatientLoginPage />
+      </GuestRoute>
+    ),
+  },
+  {
+    path: '/register',
+    element: (
+      <GuestRoute>
+        <PatientRegisterPage />
+      </GuestRoute>
+    ),
   },
   {
     path: '/admin/login',
-    element: <AdminLoginPage />,
+    element: (
+      <GuestRoute>
+        <AdminLoginPage />
+      </GuestRoute>
+    ),
   },
 
   // Rutas privadas de pacientes (URL base y turnos)
   {
     path: '/',
     element: (
-      <ProtectedRoute redirectTo="/login">
+      <ProtectedRoute redirectTo="/login" allowedRoles={[ROLES.PATIENT]}>
         <PatientLayout />
       </ProtectedRoute>
     ),
@@ -59,7 +79,7 @@ const routes = [
   {
     path: '/admin',
     element: (
-      <ProtectedRoute redirectTo="/admin/login">
+      <ProtectedRoute redirectTo="/admin/login" allowedRoles={[ROLES.ADMIN]}>
         <DashboardLayout />
       </ProtectedRoute>
     ),
@@ -92,6 +112,10 @@ const routes = [
         path: 'doctors',
         element: <DoctorsPage />,
       },
+      {
+        path: 'availability',
+        element: <AvailabilityPage />,
+      },
     ],
   },
 
@@ -102,9 +126,9 @@ const routes = [
   },
 ];
 
-function App() {
-  const router = createBrowserRouter(routes);
+const router = createBrowserRouter(routes);
 
+function App() {
   return (
     <AuthProvider>
       <RouterProvider router={router} />
